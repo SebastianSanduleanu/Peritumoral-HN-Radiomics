@@ -10,17 +10,19 @@ library(rms)
 packageurl <- "http://cran.r-project.org/src/contrib/Archive/ggplot2/ggplot2_0.9.1.tar.gz"
 install.packages(packageurl, repos=NULL, type="source")
 
-
+#Set working directory and load both clinical and radiomics .csv files
 setwd("C:/Users/S.Sanduleanu/Desktop/DESIGN Tumor Border Analysis 23072019/Oropharynx/TB 3mm/")
 Clinical_training<-read.csv("Clinical_DESIGN.csv", sep=';', dec='.', stringsAsFactors=TRUE)
 Clinical_validation<-read.csv("Clinical_BD2DECIDE.csv", sep=';', dec='.', stringsAsFactors=TRUE)
 Radiomics_training<-read.csv("Radiomics_DESIGN.csv", sep=';', dec='.')
 Radiomics_validation<-read.csv("Radiomics_BD2DECIDE.csv", sep=';', dec='.')
 
-batch<-as.numeric(c(Clinical_training$Batch, Clinical_validation$Batch))
+#Remove redundant radiomics columns
 Var_Radiomics_Training<-Radiomics_DESIGN[,20:1317]
 Var_Radiomics_Validation<-Radiomics_BD2DECIDE[,20:1317]
 
+#ComBat feature harmonization from loading the batch file (scanner type) to removing zero variance features to feature harmonization
+batch<-as.numeric(c(Clinical_training$Batch, Clinical_validation$Batch))
 dat<-dat[,20:1317]
 
 badCols <- nearZeroVar(dat)
@@ -70,6 +72,7 @@ covariates <- names(Var_Clinical_Training)
 Var_Radiomics_Training$time<-Clinical_training$TimeToDistantMetastasis
 Var_Radiomics_Training$status<-Clinical_training$StatusDistantMetastasis
 
+#Keep adding highest importance features until first peak in OOB c-index
 CindexVector <- matrix(nrow=10, ncol=2)
 for(i in c(1:10)){
   selectedVariables <-names(c[i])
@@ -102,7 +105,6 @@ fit <- rfsrc(survObjT, Var_Clinical_Training, ntree = 1000,
              seed = NULL,
              do.trace = FALSE,
              statistics = FALSE)
-
 
 ##TRAINING
 
@@ -163,7 +165,6 @@ ggsurvplot(
     c("#E7B800", "#2E9FDF") # custom color palettes.
 )
 
-
 #Validation
 survObjV <- Surv(OSV,CV)
 
@@ -179,8 +180,6 @@ gg_dataV <-  gg_survival(interval = "OS", censor = "C", by ="MS", data = DV)
 plot(gg_dataV)
 
 KaplanMeierCurveV <-survfit(survObjV ~ ModelStrataV, data = DV)
-
-
 
 ggsurvplot(
   KaplanMeierCurveV,                     # survfit object with calculated statistics.
